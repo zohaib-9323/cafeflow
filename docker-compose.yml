@@ -1,0 +1,63 @@
+# Local development stack. Variables are read from the project's .env file.
+#   docker compose up -d        -> app on http://localhost:8000, mail UI on http://localhost:8025
+name: cafeflow
+
+x-php: &php
+  build:
+    context: .
+    dockerfile: docker/php/Dockerfile
+  image: cafeflow-php:dev
+  volumes:
+    - .:/var/www/html
+  depends_on:
+    mysql:
+      condition: service_healthy
+  environment:
+    PHP_CLI_SERVER_WORKERS: 4
+
+services:
+  app:
+    <<: *php
+    command: php artisan serve --host=0.0.0.0 --port=8000
+    ports:
+      - "${APP_PORT:-8000}:8000"
+
+  queue:
+    <<: *php
+    command: php artisan queue:work --tries=3 --backoff=10 --sleep=2
+    restart: unless-stopped
+
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:-cafeflow}
+      MYSQL_USER: ${DB_USERNAME:-cafeflow}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?set DB_ROOT_PASSWORD in .env}
+    ports:
+      - "${FORWARD_DB_PORT:-3306}:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-p${DB_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  analytics:
+    build: ./services/analytics
+    image: cafeflow-analytics:dev
+    environment:
+      ANALYTICS_SERVICE_KEY: ${ANALYTICS_SERVICE_KEY:?set ANALYTICS_SERVICE_KEY in .env}
+      ANALYTICS_ENV: ${APP_ENV:-local}
+    ports:
+      - "${ANALYTICS_PORT:-8001}:8001"
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "${MAILPIT_UI_PORT:-8025}:8025"
+
+volumes:
+  mysql-data:
