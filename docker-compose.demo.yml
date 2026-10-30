@@ -1,0 +1,36 @@
+# Public demo server overrides, loaded on top of docker-compose.yml via COMPOSE_FILE in .env (deploy.sh sets it).
+# Every internal port is bound to 127.0.0.1 (Docker bypasses ufw/iptables), and Caddy serves the site over HTTPS.
+services:
+  app:
+    ports: !override ["127.0.0.1:${APP_PORT:-8000}:8000"]
+    restart: unless-stopped
+
+  queue:
+    restart: unless-stopped
+
+  mysql:
+    ports: !override ["127.0.0.1:${FORWARD_DB_PORT:-3306}:3306"]
+    restart: unless-stopped
+
+  analytics:
+    ports: !override ["127.0.0.1:${ANALYTICS_PORT:-8001}:8001"]
+    restart: unless-stopped
+
+  mailpit:
+    ports: !override ["127.0.0.1:${MAILPIT_UI_PORT:-8025}:8025"]
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2
+    network_mode: host
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:?set SITE_ADDRESS in .env}
+    volumes:
+      - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    restart: unless-stopped
+
+volumes:
+  caddy-data:
+  caddy-config:

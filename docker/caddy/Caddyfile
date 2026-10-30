@@ -1,0 +1,5 @@
+# HTTPS front for the demo server. Caddy fetches the Let's Encrypt certificate for SITE_ADDRESS automatically.
+{$SITE_ADDRESS} {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:8000
+}
