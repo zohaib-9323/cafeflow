@@ -1,0 +1,84 @@
+// Pieces both layouts use.
+
+.text-balance { text-wrap: balance; }
+.font-serif { font-family: $headings-font-family; }
+.fw-semibold { font-weight: 600 !important; }
+.bg-beige { background-color: $cf-beige !important; }
+.bg-cream { background-color: $cf-cream !important; }
+.text-coffee { color: $cf-coffee !important; }
+
+// Visible, consistent keyboard focus everywhere (WCAG 2.4.7).
+:focus-visible {
+    outline: 3px solid rgba($cf-coffee, 0.55);
+    outline-offset: 2px;
+}
+.btn:focus-visible, .form-control:focus-visible, .form-select:focus-visible { outline: none; }
+
+.skip-link {
+    position: absolute;
+    left: 1rem;
+    top: -3rem;
+    z-index: 2000;
+    padding: 0.5rem 1rem;
+    background: $cf-charcoal;
+    color: #fff;
+    border-radius: $border-radius;
+    &:focus { top: 1rem; color: #fff; }
+}
+
+.badge {
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    &.text-bg-accent { background-color: $cf-caramel !important; color: $cf-charcoal !important; }
+    &.text-bg-warning { color: $cf-charcoal !important; }
+}
+
+.status-dot {
+    display: inline-block;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    margin-right: 0.35rem;
+    vertical-align: middle;
+}
+
+.btn-accent {
+    @include button-variant($cf-caramel, $cf-caramel, $cf-charcoal, darken($cf-caramel, 6%), darken($cf-caramel, 6%), $cf-charcoal);
+}
+
+// Tables become stacked cards on small screens: each <td> needs a data-label.
+@include media-breakpoint-down(md) {
+    .table-stack {
+        thead { display: none; }
+        tr { display: block; padding: 0.75rem 0; border-bottom: 1px solid $border-color; }
+        td {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            border: 0 !important;
+            padding: 0.3rem 0.85rem !important;
+            text-align: right;
+            &::before {
+                content: attr(data-label);
+                font-weight: 600;
+                color: $cf-muted;
+                text-align: left;
+            }
+            &[data-label=""]::before { content: none; }
+        }
+    }
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: $cf-muted;
+    .bi { font-size: 2.25rem; color: $cf-caramel; display: block; margin-bottom: 0.75rem; }
+}
+
+.ratio-product { --bs-aspect-ratio: 75%; }
+.object-fit-cover { object-fit: cover; }
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
+}
