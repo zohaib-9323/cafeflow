@@ -1,0 +1,522 @@
+openapi: 3.0.3
+info:
+  title: CafeFlow REST API
+  version: 1.0.0
+  description: |
+    JSON API for the CafeFlow café platform (demo brand: Larkspur Coffee House).
+
+    **Envelope.** Every response is `{ "success": bool, "message": string, "data": … }`.
+    Paginated lists add `meta` (`current_page`, `per_page`, `total`, `last_page`).
+    Validation failures return `422` with `errors` keyed by field.
+
+    **Auth.** `POST /auth/login` returns a Sanctum token. Send it as
+    `Authorization: Bearer <token>`. Tokens expire after 30 days.
+    Permissions follow the same roles as the web dashboard
+    (super_admin, manager, staff, customer).
+
+    **Money.** Amounts are strings with two decimals (e.g. `"4.50"`) to avoid float rounding.
+    Totals are always calculated on the server.
+servers:
+  - url: /api/v1
+tags:
+  - name: Auth
+  - name: Catalog
+  - name: Cart
+  - name: Orders
+  - name: Reviews
+  - name: Promotions
+  - name: Customers
+  - name: Inventory
+  - name: Analytics
+components:
+  securitySchemes:
+    bearer:
+      type: http
+      scheme: bearer
+  schemas:
+    Envelope:
+      type: object
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+        data: {}
+    Error:
+      type: object
+      properties:
+        success: { type: boolean, example: false }
+        message: { type: string, example: The given data was invalid. }
+        errors:
+          type: object
+          additionalProperties: { type: array, items: { type: string } }
+    Money: { type: string, pattern: '^-?\d+\.\d{2}$', example: '4.50' }
+    Category:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        slug: { type: string }
+        description: { type: string, nullable: true }
+        products_count: { type: integer }
+    Product:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string, example: Flat White }
+        slug: { type: string, example: flat-white }
+        short_description: { type: string, nullable: true }
+        description: { type: string, nullable: true }
+        price: { $ref: '#/components/schemas/Money' }
+        is_available: { type: boolean }
+        is_featured: { type: boolean }
+        prep_minutes: { type: integer }
+        calories: { type: integer, nullable: true }
+        image_url: { type: string }
+        category: { $ref: '#/components/schemas/Category' }
+        variations:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: integer }
+              name: { type: string, example: Large }
+              price_adjustment: { $ref: '#/components/schemas/Money' }
+              is_default: { type: boolean }
+        addons:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: integer }
+              name: { type: string, example: Oat milk }
+              price: { $ref: '#/components/schemas/Money' }
+    CartItem:
+      type: object
+      required: [product_id, quantity]
+      properties:
+        product_id: { type: integer }
+        variation_id: { type: integer, nullable: true }
+        addon_ids: { type: array, items: { type: integer } }
+        quantity: { type: integer, minimum: 1 }
+    CartRequest:
+      type: object
+      required: [fulfillment_type, items]
+      properties:
+        fulfillment_type: { type: string, enum: [pickup, delivery] }
+        promo_code: { type: string, nullable: true }
+        items: { type: array, items: { $ref: '#/components/schemas/CartItem' } }
+    Quote:
+      type: object
+      properties:
+        lines: { type: array, items: { type: object } }
+        subtotal: { $ref: '#/components/schemas/Money' }
+        discount: { $ref: '#/components/schemas/Money' }
+        tax: { $ref: '#/components/schemas/Money' }
+        delivery_fee: { $ref: '#/components/schemas/Money' }
+        total: { $ref: '#/components/schemas/Money' }
+        promo_error: { type: string, nullable: true }
+        issues: { type: array, items: { type: string } }
+    OrderStatus:
+      type: string
+      enum: [pending, confirmed, preparing, ready_for_pickup, out_for_delivery, completed, cancelled]
+    Order:
+      type: object
+      properties:
+        number: { type: string, example: CF-100042 }
+        status: { $ref: '#/components/schemas/OrderStatus' }
+        fulfillment_type: { type: string, enum: [pickup, delivery] }
+        payment_method: { type: string, enum: [cash, card] }
+        payment_status: { type: string, enum: [unpaid, pending, paid, failed, refunded] }
+        subtotal: { $ref: '#/components/schemas/Money' }
+        discount_total: { $ref: '#/components/schemas/Money' }
+        tax_total: { $ref: '#/components/schemas/Money' }
+        delivery_fee: { $ref: '#/components/schemas/Money' }
+        total: { $ref: '#/components/schemas/Money' }
+        placed_at: { type: string, format: date-time }
+        items: { type: array, items: { type: object } }
+        payment_url: { type: string, nullable: true, description: Only for new card orders; redirect the customer here to pay. }
+    User:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        email: { type: string }
+        role: { type: string, enum: [super_admin, manager, staff, customer] }
+  responses:
+    Unauthenticated:
+      description: Missing or invalid token
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    Forbidden:
+      description: Your role can't do this
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    Invalid:
+      description: Validation or business-rule failure
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+  parameters:
+    Slug: { name: product, in: path, required: true, schema: { type: string }, example: flat-white }
+    OrderNumber: { name: order, in: path, required: true, schema: { type: string }, example: CF-100042 }
+    PerPage: { name: per_page, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 15 } }
+security: []
+paths:
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Create a customer account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password, password_confirmation]
+              properties:
+                name: { type: string }
+                email: { type: string, format: email }
+                phone: { type: string }
+                password: { type: string, format: password }
+                password_confirmation: { type: string, format: password }
+                marketing_opt_in: { type: boolean }
+      responses:
+        '201': { description: Account created, returns user and token }
+        '422': { $ref: '#/components/responses/Invalid' }
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Sign in and receive a bearer token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email, example: customer@cafeflow.demo }
+                password: { type: string, format: password }
+                device_name: { type: string, example: ios-app }
+      responses:
+        '200':
+          description: Signed in
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - properties:
+                      data:
+                        type: object
+                        properties:
+                          user: { $ref: '#/components/schemas/User' }
+                          token: { type: string }
+                          token_type: { type: string, example: Bearer }
+        '422': { $ref: '#/components/responses/Invalid' }
+        '429': { description: Too many attempts }
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: The signed-in user
+      security: [{ bearer: [] }]
+      responses:
+        '200': { description: Current user }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Revoke the current token
+      security: [{ bearer: [] }]
+      responses:
+        '200': { description: Signed out }
+  /categories:
+    get:
+      tags: [Catalog]
+      summary: Visible menu categories
+      responses:
+        '200': { description: Categories, content: { application/json: { schema: { allOf: [{ $ref: '#/components/schemas/Envelope' }, { properties: { data: { type: array, items: { $ref: '#/components/schemas/Category' } } } }] } } } }
+  /products:
+    get:
+      tags: [Catalog]
+      summary: Search and filter the menu
+      parameters:
+        - { name: q, in: query, schema: { type: string } }
+        - { name: category, in: query, description: Category slug, schema: { type: string } }
+        - { name: available, in: query, schema: { type: boolean } }
+        - { name: featured, in: query, schema: { type: boolean } }
+        - { name: min_price, in: query, schema: { type: number } }
+        - { name: max_price, in: query, schema: { type: number } }
+        - { name: sort, in: query, schema: { type: string, enum: [name, price, -price, newest] } }
+        - $ref: '#/components/parameters/PerPage'
+      responses:
+        '200': { description: Paginated products, content: { application/json: { schema: { allOf: [{ $ref: '#/components/schemas/Envelope' }, { properties: { data: { type: array, items: { $ref: '#/components/schemas/Product' } } } }] } } } }
+    post:
+      tags: [Catalog]
+      summary: Create a product (manager, super admin)
+      security: [{ bearer: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, description: Same fields as the admin product form (name, slug, category_id, price, status, variations[], addons[], recipe[]). } } } }
+      responses:
+        '201': { description: Created }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/Invalid' }
+  /products/{product}:
+    parameters: [{ $ref: '#/components/parameters/Slug' }]
+    get:
+      tags: [Catalog]
+      summary: One product with sizes and add-ons
+      responses:
+        '200': { description: Product, content: { application/json: { schema: { allOf: [{ $ref: '#/components/schemas/Envelope' }, { properties: { data: { $ref: '#/components/schemas/Product' } } }] } } } }
+        '404': { description: Not found or not on sale }
+    put:
+      tags: [Catalog]
+      summary: Update a product (manager, super admin)
+      security: [{ bearer: [] }]
+      responses:
+        '200': { description: Saved }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    delete:
+      tags: [Catalog]
+      summary: Archive a product (order history is kept)
+      security: [{ bearer: [] }]
+      responses:
+        '200': { description: Archived }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /products/{product}/reviews:
+    parameters: [{ $ref: '#/components/parameters/Slug' }]
+    get:
+      tags: [Reviews]
+      summary: Approved reviews for a product
+      responses:
+        '200': { description: Paginated reviews }
+    post:
+      tags: [Reviews]
+      summary: Review a product you have ordered (customers)
+      description: Reviews are held for moderation before they appear.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [rating]
+              properties:
+                rating: { type: integer, minimum: 1, maximum: 5 }
+                title: { type: string, maxLength: 120 }
+                body: { type: string, maxLength: 2000 }
+      responses:
+        '201': { description: Submitted for moderation }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/Invalid' }
+  /cart/quote:
+    post:
+      tags: [Cart]
+      summary: Price a cart without placing an order
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/CartRequest' } } } }
+      responses:
+        '200': { description: Server-calculated totals, content: { application/json: { schema: { allOf: [{ $ref: '#/components/schemas/Envelope' }, { properties: { data: { $ref: '#/components/schemas/Quote' } } }] } } } }
+        '422': { $ref: '#/components/responses/Invalid' }
+  /orders:
+    get:
+      tags: [Orders]
+      summary: Orders you can see
+      description: Customers see their own orders. Staff see orders assigned to them and unassigned ones. Managers see all.
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/OrderStatus' } }
+        - { name: q, in: query, schema: { type: string } }
+        - { name: from, in: query, schema: { type: string, format: date } }
+        - { name: to, in: query, schema: { type: string, format: date } }
+        - $ref: '#/components/parameters/PerPage'
+      responses:
+        '200': { description: Paginated orders }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+    post:
+      tags: [Orders]
+      summary: Place an order (customers)
+      description: Prices are recalculated on the server. For `payment_method=card` the response includes `payment_url`.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/CartRequest'
+                - type: object
+                  required: [payment_method, customer_name, customer_phone]
+                  properties:
+                    payment_method: { type: string, enum: [cash, card] }
+                    customer_name: { type: string }
+                    customer_phone: { type: string, example: '+1 555 0142' }
+                    delivery_line1: { type: string, description: Required for delivery }
+                    delivery_line2: { type: string }
+                    delivery_city: { type: string, description: Required for delivery }
+                    delivery_postal_code: { type: string, description: Required for delivery }
+                    delivery_instructions: { type: string }
+                    notes: { type: string }
+      responses:
+        '201': { description: Order placed, content: { application/json: { schema: { allOf: [{ $ref: '#/components/schemas/Envelope' }, { properties: { data: { $ref: '#/components/schemas/Order' } } }] } } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/Invalid' }
+        '429': { description: Too many orders in a short time }
+  /orders/{order}:
+    parameters: [{ $ref: '#/components/parameters/OrderNumber' }]
+    get:
+      tags: [Orders]
+      summary: One order
+      security: [{ bearer: [] }]
+      responses:
+        '200': { description: Order }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /orders/{order}/status:
+    parameters: [{ $ref: '#/components/parameters/OrderNumber' }]
+    patch:
+      tags: [Orders]
+      summary: Move an order to its next status (team)
+      description: Confirming deducts ingredients from stock and fails with 422 if anything is short. Cancelling returns stock and refunds online payments.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { $ref: '#/components/schemas/OrderStatus' }
+                note: { type: string, description: Required when cancelling }
+      responses:
+        '200': { description: Updated }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/Invalid' }
+  /orders/{order}/cancel:
+    parameters: [{ $ref: '#/components/parameters/OrderNumber' }]
+    post:
+      tags: [Orders]
+      summary: Cancel your own pending order (customers)
+      security: [{ bearer: [] }]
+      responses:
+        '200': { description: Cancelled }
+        '422': { $ref: '#/components/responses/Invalid' }
+  /promotions/validate:
+    post:
+      tags: [Promotions]
+      summary: Check a promo code against a subtotal
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code, subtotal]
+              properties:
+                code: { type: string, example: WELCOME10 }
+                subtotal: { $ref: '#/components/schemas/Money' }
+      responses:
+        '200': { description: Valid; returns the discount }
+        '422': { $ref: '#/components/responses/Invalid' }
+  /promotions:
+    get:
+      tags: [Promotions]
+      summary: All promotions (manager, super admin)
+      security: [{ bearer: [] }]
+      responses:
+        '200': { description: Promotions }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Promotions]
+      summary: Create a promotion (manager, super admin)
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code, name, type, value]
+              properties:
+                code: { type: string }
+                name: { type: string }
+                type: { type: string, enum: [percentage, fixed] }
+                value: { $ref: '#/components/schemas/Money' }
+                min_order_amount: { $ref: '#/components/schemas/Money' }
+                max_discount: { $ref: '#/components/schemas/Money' }
+                usage_limit: { type: integer }
+                per_customer_limit: { type: integer }
+                starts_at: { type: string, format: date-time }
+                expires_at: { type: string, format: date-time }
+      responses:
+        '201': { description: Created }
+        '422': { $ref: '#/components/responses/Invalid' }
+  /customers:
+    get:
+      tags: [Customers]
+      summary: Customer list (manager, super admin)
+      security: [{ bearer: [] }]
+      parameters: [{ name: q, in: query, schema: { type: string } }, { $ref: '#/components/parameters/PerPage' }]
+      responses:
+        '200': { description: Paginated customers }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /customers/{user}:
+    get:
+      tags: [Customers]
+      summary: One customer with order stats
+      security: [{ bearer: [] }]
+      parameters: [{ name: user, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: Customer }
+        '404': { description: Not a customer }
+  /inventory:
+    get:
+      tags: [Inventory]
+      summary: Stock levels (team)
+      security: [{ bearer: [] }]
+      parameters: [{ name: q, in: query, schema: { type: string } }, { name: low, in: query, schema: { type: boolean } }]
+      responses:
+        '200': { description: Paginated inventory items }
+  /inventory/{item}/movements:
+    get:
+      tags: [Inventory]
+      summary: Stock history for one item
+      security: [{ bearer: [] }]
+      parameters: [{ name: item, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: Paginated movements }
+  /inventory/{item}/adjustments:
+    post:
+      tags: [Inventory]
+      summary: Record a restock, waste or stock count
+      description: Staff may only record waste. Restock and waste take the amount moved; adjustment takes the new counted total.
+      security: [{ bearer: [] }]
+      parameters: [{ name: item, in: path, required: true, schema: { type: integer } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type, quantity]
+              properties:
+                type: { type: string, enum: [restock, waste, adjustment] }
+                quantity: { type: number, example: 2000 }
+                reason: { type: string, description: Required for waste and adjustment }
+      responses:
+        '200': { description: Recorded }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/Invalid' }
+  /analytics/{report}:
+    get:
+      tags: [Analytics]
+      summary: Reports from the analytics service (manager, super admin)
+      description: |
+        Laravel sends the order data to the internal Python service and relays the result.
+        If that service is down, `meta.source` is `laravel-fallback` (sales only) or the
+        response is 503.
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: report, in: path, required: true, schema: { type: string, enum: [sales, products, customers, forecast] } }
+        - { name: range, in: query, schema: { type: string, enum: [today, 7d, 30d, month, custom], default: 7d } }
+        - { name: from, in: query, schema: { type: string, format: date } }
+        - { name: to, in: query, schema: { type: string, format: date } }
+      responses:
+        '200': { description: Report }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '503': { description: Analytics service unavailable }
