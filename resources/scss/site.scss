@@ -426,3 +426,125 @@ $bootstrap-icons-font-dir: '../../node_modules/bootstrap-icons/font/fonts';
 
 .auth-card { max-width: 30rem; }
 .sticky-summary { position: sticky; top: 6rem; }
+
+// ---------- inner-page headers ----------
+.page-head { padding-block: clamp(3rem, 7vw, 5.5rem) clamp(2rem, 4vw, 3rem); }
+.page-title {
+    font-size: clamp(3rem, 7vw, 5.5rem);
+    line-height: 0.95;
+    letter-spacing: -0.035em;
+}
+
+// ---------- menu ----------
+.menu-search {
+    position: relative;
+    display: flex;
+    align-items: center;
+    border-bottom: 2px solid $cf-charcoal;
+    > .bi { position: absolute; left: 0; color: $cf-muted; }
+    .form-control {
+        border: 0;
+        background: transparent;
+        padding: 0.75rem 0.5rem 0.75rem 1.75rem;
+        font-size: 1.05rem;
+        box-shadow: none;
+    }
+    &:focus-within { border-bottom-color: $cf-coffee; }
+    .btn { flex-shrink: 0; padding-inline: 0; }
+}
+// Pills stay reachable while scrolling a long menu; they sit just under the sticky site header.
+.menu-filter {
+    position: sticky;
+    top: var(--nav-h, 0px);
+    z-index: 1010;
+    background: rgba($cf-cream, 0.95);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid rgba($cf-charcoal, 0.08);
+    .category-pills { padding-block: 0.75rem; }
+}
+.menu-chapter {
+    padding-block: clamp(2.5rem, 6vw, 4.5rem);
+    & + & { border-top: 1px solid $cf-sand; }
+}
+.menu-chapter-head {
+    @include media-breakpoint-up(lg) {
+        position: sticky;
+        top: calc(var(--nav-h, 0px) + 5rem);
+    }
+}
+.menu-chapter-img {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 4 / 5;
+    max-width: 18rem;
+    object-fit: cover;
+    border-radius: $border-radius-xl;
+    margin-top: 1.75rem;
+}
+.menu-board-lg {
+    img { width: 4.75rem; height: 4.75rem; border-radius: $border-radius-lg; }
+    a { padding-block: 1.25rem; gap: 1.25rem; }
+    .menu-board-name { font-size: 1.3rem; }
+    @include media-breakpoint-down(sm) {
+        img { width: 4rem; height: 4rem; }
+        a { gap: 1rem; }
+        .menu-board-name { font-size: 1.15rem; }
+    }
+}
+.menu-board-cols {
+    @include media-breakpoint-up(md) {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        column-gap: 3rem;
+    }
+}
+.menu-board-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-top: 0.4rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: $cf-coffee;
+}
+
+// ---------- product ----------
+.product-title {
+    font-size: clamp(2.6rem, 5vw, 4rem);
+    line-height: 1;
+    letter-spacing: -0.03em;
+}
+
+// ---------- about ----------
+.story-photo {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 2 / 1;
+    object-fit: cover;
+    border-radius: $border-radius-xl;
+    @include media-breakpoint-down(md) { aspect-ratio: 4 / 3; }
+}
+.story-aside {
+    font-family: $headings-font-family;
+    font-size: clamp(1.6rem, 2.6vw, 2.1rem);
+    line-height: 1.15;
+    letter-spacing: -0.015em;
+    color: $cf-charcoal;
+    padding-top: 1rem;
+    border-top: 2px solid $cf-charcoal;
+}
+.prose-story {
+    max-width: none;
+    font-size: 1.1rem;
+    > p:first-child { font-size: 1.35rem; line-height: 1.5; color: $cf-charcoal; }
+    h2 { font-size: 1.6rem; margin-top: 2.5rem; }
+    ul { padding-left: 0; list-style: none; }
+    li { padding-block: 0.85rem; border-top: 1px solid $cf-sand; &:last-child { border-bottom: 1px solid $cf-sand; } }
+}
+.joins-footer {
+    margin-bottom: -3rem; // cancels the footer's mt-5 so the two dark blocks meet
+    border-bottom: 1px solid rgba(#fff, 0.1);
+}

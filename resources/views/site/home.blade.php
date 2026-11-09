@@ -62,21 +62,7 @@
                         <div class="col-lg-6">
                             <ul class="menu-board">
                                 @foreach ($rest as $product)
-                                    <li @class(['is-unavailable' => ! $product->is_available])>
-                                        <a href="{{ route('menu.show', $product) }}">
-                                            <img src="{{ $product->imageUrl() }}" alt="" loading="lazy" width="96" height="96">
-                                            <span class="menu-board-text">
-                                                <span class="menu-board-line">
-                                                    <span class="menu-board-name">{{ $product->name }}</span>
-                                                    <span class="menu-board-dots" aria-hidden="true"></span>
-                                                    <span class="menu-board-price">{{ Money::format($product->price) }}</span>
-                                                </span>
-                                                <span class="small text-secondary d-block">
-                                                    @if (! $product->is_available)<strong>Sold out today.</strong> @endif{{ $product->short_description }}
-                                                </span>
-                                            </span>
-                                        </a>
-                                    </li>
+                                    <x-menu-row :product="$product" :tag="false" />
                                 @endforeach
                             </ul>
                         </div>

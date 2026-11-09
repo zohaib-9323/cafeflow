@@ -159,3 +159,11 @@ if (tracker) {
     };
     setInterval(poll, 15000);
 }
+
+// ---------- sticky offsets: expose the header height so sticky bars sit right under it ----------
+const siteHeader = $('.site-nav');
+if (siteHeader) {
+    const setNavHeight = () => document.documentElement.style.setProperty('--nav-h', `${siteHeader.offsetHeight}px`);
+    setNavHeight();
+    new ResizeObserver(setNavHeight).observe(siteHeader);
+}
