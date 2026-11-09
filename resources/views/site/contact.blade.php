@@ -1,6 +1,6 @@
 <x-layouts.site title="Contact us">
     <div class="container py-5">
-        <div class="row g-5">
+        <div class="row g-4 g-lg-5">
             <div class="col-lg-5">
                 <p class="eyebrow mb-2">Get in touch</p>
                 <h1 class="section-title mb-3">Contact us</h1>

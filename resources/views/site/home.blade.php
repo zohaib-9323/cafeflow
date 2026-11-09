@@ -27,7 +27,7 @@
     {{-- Intro --}}
     <section class="section pt-4" aria-labelledby="about-title">
         <div class="container">
-            <div class="row align-items-center g-5">
+            <div class="row align-items-center g-4 g-lg-5">
                 <div class="col-lg-6 order-lg-2">
                     <img src="{{ $aboutImage }}" alt="Inside {{ $site['business']['name'] }}" class="img-fluid rounded-4 shadow-sm w-100 object-fit-cover" style="aspect-ratio: 4/3" loading="lazy" width="960" height="720">
                 </div>

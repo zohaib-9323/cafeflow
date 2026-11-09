@@ -167,9 +167,20 @@ class CatalogSeeder extends Seeder
             ]],
         ];
 
+        // Category tile photos, reusing bundled product shots that aren't among the home-page favourites.
+        $categoryImages = [
+            'Espresso Bar' => 'espresso',
+            'Brew Bar & Cold Drinks' => 'pour-over',
+            'Breakfast' => 'pancakes',
+            'Kitchen' => 'steak-frites',
+            'Bakery' => 'sourdough',
+            'Cakes & Desserts' => 'raspberry-pistachio-cake',
+        ];
+
         foreach ($menu as $sort => [$categoryName, $description, $products]) {
             $category = Category::query()->create([
                 'name' => $categoryName, 'slug' => Str::slug($categoryName), 'description' => $description,
+                'image_path' => isset($categoryImages[$categoryName]) ? $this->publishImage($categoryImages[$categoryName], $categoryName) : null,
                 'sort_order' => $sort, 'is_active' => true,
             ]);
 
