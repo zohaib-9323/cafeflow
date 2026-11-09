@@ -29,7 +29,7 @@
 
             <div class="col-lg-6">
                 <p class="eyebrow mb-2">{{ $product->category->name }}</p>
-                <h1 class="display-6 mb-2">{{ $product->name }}</h1>
+                <h1 class="product-title mb-3">{{ $product->name }}</h1>
                 <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
                     <span class="fs-4 fw-semibold text-body">{{ Money::format($product->price) }}</span>
                     @if ($rating->count)
@@ -97,7 +97,7 @@
         <section id="reviews" class="mt-5 pt-3" aria-labelledby="reviews-title">
             <div class="row g-4">
                 <div class="col-lg-4">
-                    <h2 id="reviews-title" class="h3">Reviews</h2>
+                    <h2 id="reviews-title" class="section-title">Reviews</h2>
                     @if ($rating->count)
                         <p class="mb-1"><x-stars :rating="(float) $rating->avg" /> <strong>{{ number_format($rating->avg, 1) }}</strong> out of 5</p>
                         <p class="text-secondary small">Based on {{ $rating->count }} {{ Str::plural('review', $rating->count) }} from verified customers.</p>
@@ -135,13 +135,16 @@
         </section>
 
         @if ($related->isNotEmpty())
-            <section class="mt-5" aria-labelledby="related-title">
-                <h2 id="related-title" class="h3 mb-3">You might also like</h2>
-                <div class="row g-4">
+            <section class="mt-5 pt-lg-4" aria-labelledby="related-title">
+                <header class="section-head">
+                    <h2 id="related-title" class="section-title mb-0">You might also like</h2>
+                    <a href="{{ route('menu.index', ['category' => $product->category->slug]) }}" class="link-quiet">More from {{ $product->category->name }} <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+                </header>
+                <ul class="menu-board menu-board-cols">
                     @foreach ($related as $item)
-                        <div class="col-sm-6 col-lg-3"><x-product-card :product="$item" /></div>
+                        <x-menu-row :product="$item" />
                     @endforeach
-                </div>
+                </ul>
             </section>
         @endif
     </div>
