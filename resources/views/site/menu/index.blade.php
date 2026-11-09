@@ -32,8 +32,8 @@
         <div class="container mb-4">
             <div class="promo-banner row g-0">
                 <div class="col-md-7 p-4 d-flex flex-column justify-content-center">
-                    <h2 class="h3 text-white mb-1">{{ $banner->title }}</h2>
-                    @if ($banner->subtitle)<p class="mb-3 opacity-75">{{ $banner->subtitle }}</p>@endif
+                    <h2 class="h3 mb-1">{{ $banner->title }}</h2>
+                    @if ($banner->subtitle)<p class="mb-3 text-secondary">{{ $banner->subtitle }}</p>@endif
                     @if ($banner->cta_url)<div><a href="{{ $banner->cta_url }}" class="btn btn-accent btn-sm">{{ $banner->cta_label }}</a></div>@endif
                 </div>
                 @if ($banner->imageUrl())<div class="col-md-5 d-none d-md-block"><img src="{{ $banner->imageUrl() }}" alt="" loading="lazy" style="max-height:220px"></div>@endif
